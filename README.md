@@ -20,5 +20,5 @@ crontab -e
 and in the editor, add the line
 
 ```
-*/5 * * * * path/to/project/venv/bin/python path/to/project/dns.py
+*/5 * * * * path/to/project/venv/bin/python path/to/project/main.py
 ```
