@@ -28,6 +28,7 @@ The former is quicker but the latter serves as a backup in case OpenDNS is
 down.
 """
 
+from logging.handlers import RotatingFileHandler
 import base64
 import json
 import logging
@@ -40,18 +41,27 @@ from cryptography.hazmat.primitives.asymmetric import padding
 import requests
 
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-log_path = os.path.join(dir_path, 'dyndns.log')
-auth_path = os.path.join(dir_path, 'auth.json')
+root_dir = os.path.dirname(os.path.realpath(__file__))
+log_dir = os.path.join(root_dir, 'logs')
+log_path = os.path.join(log_dir, 'dyndns.log')
+auth_path = os.path.join(root_dir, 'auth.json')
 
 # set up logging
-logging.basicConfig(
-    filename=log_path,
-    filemode='a',
-    format='%(asctime)s %(levelname)s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    level=logging.INFO
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+handler = RotatingFileHandler(
+    log_path,
+    maxBytes=5 * 1024 * 1024,
+    backupCount=3
     )
+formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+    )
+handler.setFormatter(formatter)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 with open(auth_path, encoding='utf-8') as f:
     auth = json.load(f)
@@ -168,7 +178,7 @@ def main():
         }
 
     r = requests.put(cloudflare_url, json=payload, headers=headers, timeout=10)
-    logging.debug(f'response text: {r.text}')
+    logging.info(f'response text: {r.text}')
 
 
 if __name__ == "__main__":
