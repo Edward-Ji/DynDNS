@@ -41,7 +41,7 @@ import requests
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-log_path = os.path.join(dir_path, 'dns.log')
+log_path = os.path.join(dir_path, 'dyndns.log')
 auth_path = os.path.join(dir_path, 'auth.json')
 
 # set up logging
@@ -168,7 +168,7 @@ def main():
         }
 
     r = requests.put(cloudflare_url, json=payload, headers=headers, timeout=10)
-    logging.info(f'response text: {r.text}')
+    logging.debug(f'response text: {r.text}')
 
 
 if __name__ == "__main__":
