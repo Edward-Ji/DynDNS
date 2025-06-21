@@ -81,82 +81,12 @@ def get_ip_from_opendns():
     return None
 
 
-def get_ip_from_router():
-    """
-    Get the external IP address by logging into the router and querying the
-    certain page. This is a backup in case OpenDNS is down. The make and model
-    of the router is Archer VR1600v. The router uses RSA encryption to encrypt
-    the username and password.
-    """
-    router_url = 'http://192.168.1.1/'
-
-    session = requests.Session()
-    session.headers = {
-        'Referer': router_url,
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:60.0)'
-        }
-
-    # get the index page to wake the system, do not remove
-    r = session.get(router_url)
-    logging.debug(f'getParm text: {r.text}')
-
-    # get the public key in the form of exponent and modulus
-    r = session.post(f'{router_url}cgi/getParm')
-    logging.debug(f'getParm text: {r.text}')
-
-    matches = re.findall(r'"([^"]*)"', r.text)
-    e, n = map(lambda s: int(s, 16), matches)
-
-    # reconstruct the public key and encrypt the username and password
-    # the make of the router uses PKCS1v15 padding
-    public_key = rsa.RSAPublicNumbers(e, n).public_key()
-    username = auth['router']['username'].encode()
-    password = base64.b64encode(auth['router']['password'].encode())
-    username_ciphered = public_key.encrypt(username, padding.PKCS1v15()).hex()
-    password_ciphered = public_key.encrypt(password, padding.PKCS1v15()).hex()
-
-    # login
-    params = {
-        'UserName': username_ciphered,
-        'Passwd': password_ciphered,
-        'Action': 1,
-        'LoginStatus': 0,
-        }
-    r = session.post(f'{router_url}cgi/login', params=params)
-    logging.debug(f'response text: {r.text}')
-
-    # get the token
-    r = session.get(router_url)
-    token, = re.findall(r'var token="([^"]*)"', r.text)
-    session.headers.update({'Tokenid': token})
-
-    # get the external IP address
-    session.headers.update({
-        'Connection': 'keep-alive',
-        'Content-Type': 'text/plain'
-        })
-    r = session.post(
-        f'{router_url}cgi?1',
-        '[WAN_PPP_CONN#2,1,1,0,0,0#0,0,0,0,0,0]0,0\r\n'
-        )
-    logging.debug(f'response text: {r.text}')
-    ip, = re.findall(r'externalIPAddress=(.*)', r.text)
-
-    # logout
-    r = session.post(
-        f'{router_url}cgi?8',
-        '[/cgi/logout#0,0,0,0,0,0#0,0,0,0,0,0]0,0\r\n'
-        )
-    logging.debug(f'response text: {r.text}')
-
-    return ip
-
-
 def main():
     # get external IP
     ip = get_ip_from_opendns()
     if ip is None:
-        ip = get_ip_from_router()
+        logging.warning("failed to get IP from OpenDNS")
+        return
     logging.debug(f'{ip = }')
 
     # update Cloudflare DNS record

@@ -1,8 +1,4 @@
 {
-    "router": {
-        "username": null,
-        "password": null
-    },
     "cloudflare": {
         "zone_identifier": null,
         "identifier": null,

@@ -1,0 +1,60 @@
+#!/bin/bash
+# This script sets up a systemd service and timer to run dyndns every 5 minutes.
+# Usage: sudo ./setup
+
+set -e
+
+# Ensure running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root: sudo $0"
+    exit 1
+fi
+
+# Determine non-root user's home directory
+if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    echo "Failed to detect invoking user. Please run this script with
+    sudo from your normal account."
+    exit 1
+fi
+
+SERVICE_NAME="dyndns"
+PROJECT_DIR="$USER_HOME/dyndns"
+PYTHON_EXEC="$PROJECT_DIR/.venv/bin/python"
+SCRIPT_PATH="$PROJECT_DIR/main.py"
+SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME.service"
+TIMER_PATH="/etc/systemd/system/$SERVICE_NAME.timer"
+
+# Create systemd service file
+cat <<EOF > "$SERVICE_PATH"
+[Unit]
+Description=Run $SERVICE_NAME update script
+
+[Service]
+Type=oneshot
+WorkingDirectory=$PROJECT_DIR
+ExecStart=$PYTHON_EXEC $SCRIPT_PATH
+EOF
+
+# Create systemd timer file
+cat <<EOF > "$TIMER_PATH"
+[Unit]
+Description=Run $SERVICE_NAME.service every 5 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+
+# Reload systemd, enable and start timer
+systemctl daemon-reload
+systemctl enable --now $SERVICE_NAME.timer
+
+echo "Setup complete. Timer status:"
+systemctl list-timers --all | grep $SERVICE_NAME.timer

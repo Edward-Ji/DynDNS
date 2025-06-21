@@ -1,30 +1,50 @@
 # DynDNS
 
-Query OpenDNS or login to TP-Link Archer VR1600v router for your IP and update
-Cloudflare DNS entry.
+This repository provides an automated setup for running the DynDNS update
+script every 5 minutes using a systemd timer.
+
+## Prerequisites
+
+1. **Fill in authentication details**
+   
+Copy the example file and update your Cloudflare credentials:
+
+```bash
+cp auth.json.example auth.json
+```
+
+Then edit `auth.json` and replace `null` values:
+
+2. **Install dependencies**
+
+Ensure you have [uv](https://docs.astral.sh/uv/) and install requirements:
+
+```bash
+uv sync
+```
 
 ## Setup
 
-Install Python and create a venv for this project.
+Run the setup script as root to create and enable the systemd service and timer:
 
-```
-python -m venv venv
-```
-
-Install the required packages.
-
-```
-venv/bin/pip install -r requirements.txt
+```bash
+sudo ./setup
 ```
 
-Create a scheduled job to run every five minutes or so. Run
+This will:
 
-```
-crontab -e
+- Create `/etc/systemd/system/dyndns.service` and
+`/etc/systemd/system/dyndns.timer`.
+- Enable and start the timer to run every 5 minutes.
+
+## Logs & Status
+
+- **Check timer status**:
+```bash
+systemctl list-timers --all | grep dyndns.timer
 ```
 
-and in the editor, add the following line:
-
-```
-*/5 * * * * path/to/project/venv/bin/python path/to/project/main.py
+- **View service logs**:
+```bash
+journalctl -u dyndns.service -f
 ```
